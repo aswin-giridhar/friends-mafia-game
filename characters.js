@@ -9,6 +9,7 @@ const friendsCharacters = {
         ],
         image: "joey.jpg",
         mafiaRole: "townsfolk",
+        isAlive: true, // Added for game state tracking
     },
     Phoebe: {
         voiceId: "21m00Tcm4TlvDq8ikWAM",
@@ -20,6 +21,7 @@ const friendsCharacters = {
         ],
         image: "phoebe.jpg",
         mafiaRole: "mafia",
+        isAlive: true,
     },
     Chandler: {
         voiceId: "pNInz6obpgDQGcFmaJgB",
@@ -31,6 +33,7 @@ const friendsCharacters = {
         ],
         image: "chandler.jpg",
         mafiaRole: "detective",
+        isAlive: true,
     },
     Rachel: {
         voiceId: "ThT5KcBeYPX3keUQqHPh",
@@ -42,6 +45,7 @@ const friendsCharacters = {
         ],
         image: "rachel.jpg",
         mafiaRole: "townsfolk",
+        isAlive: true,
     },
     Ross: {
         voiceId: "yoZ06aMxZJJ28mfd3POQ",
@@ -53,6 +57,7 @@ const friendsCharacters = {
         ],
         image: "ross.jpg",
         mafiaRole: "townsfolk",
+        isAlive: true,
     },
     Monica: {
         voiceId: "XB0fDUnXU5powFXDhCwa",
@@ -64,6 +69,7 @@ const friendsCharacters = {
         ],
         image: "monica.jpg",
         mafiaRole: "doctor",
+        isAlive: true,
     },
 };
 
