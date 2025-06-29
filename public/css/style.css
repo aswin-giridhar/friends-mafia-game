@@ -1,0 +1,142 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #2c1810, #4a2c1a);
+  font-family: 'Georgia', serif;
+  color: #f4e4bc;
+}
+
+.game-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Portrait Gallery Styling - Like your image */
+.portrait-gallery {
+  flex: 1;
+  background: linear-gradient(to bottom, #1a1a2e, #16213e);
+  position: relative;
+  overflow: hidden;
+}
+
+.gallery-background {
+  background-image: 
+      repeating-linear-gradient(90deg, 
+          rgba(255,215,0,0.1) 0px, 
+          transparent 2px, 
+          transparent 50px, 
+          rgba(255,215,0,0.1) 52px);
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 20px;
+}
+
+.character-frame {
+  margin: 15px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.portrait-container {
+  width: 150px;
+  height: 200px;
+  background: linear-gradient(145deg, #8b4513, #a0522d);
+  border: 3px solid #ffd700;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+  transition: all 0.3s ease;
+}
+
+.character-portrait {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 2px solid #ffd700;
+}
+
+.character-name {
+  text-align: center;
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  color: #ffd700;
+}
+
+/* Speaking Highlight Effect */
+.character-frame.speaking {
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+.speaking .portrait-container {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 30px rgba(255, 107, 107, 0.6);
+  background: linear-gradient(145deg, #ff6b6b, #ff8e8e);
+}
+
+.speaking-indicator {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  background: #ff6b6b;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.speaking .speaking-indicator {
+  opacity: 1;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Game Controls */
+.game-controls {
+  height: 200px;
+  background: rgba(0,0,0,0.8);
+  padding: 20px;
+  border-top: 3px solid #ffd700;
+}
+
+.dialogue-box {
+  background: rgba(255,215,0,0.1);
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  min-height: 60px;
+}
+
+.player-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.action-btn {
+  background: linear-gradient(145deg, #ffd700, #ffed4e);
+  border: none;
+  border-radius: 25px;
+  padding: 12px 20px;
+  font-weight: bold;
+  color: #2c1810;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255,215,0,0.4);
+}

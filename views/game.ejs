@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Mafia Game</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Portrait Gallery Section -->
+        <div class="portrait-gallery">
+            <div class="gallery-background">
+                <!-- Character portraits will be populated here -->
+                <% personas.forEach((persona, index) => { %>
+                <div class="character-frame" 
+                     id="character-<%= index %>" 
+                     data-character="<%= persona.name %>">
+                    <div class="portrait-container">
+                        <img src="/images/characters/<%= persona.image %>" 
+                             alt="<%= persona.name %>" 
+                             class="character-portrait">
+                        <div class="speaking-indicator"></div>
+                        <div class="character-name"><%= persona.name %></div>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <div class="dialogue-box">
+                <div id="current-dialogue">Welcome to Central Perk Mafia!</div>
+            </div>
+
+            <div class="player-actions">
+                <button id="mic-button" class="action-btn">🎤 Hold to Speak</button>
+                <button id="vote-button" class="action-btn">📊 Vote</button>
+                <button id="accuse-button" class="action-btn">👆 Accuse</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/game.js"></script>
+</body>
+</html>
