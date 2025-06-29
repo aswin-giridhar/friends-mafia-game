@@ -1,6 +1,6 @@
 const friendsCharacters = {
     Joey: {
-        voiceId: "EXAVITQu4vr4xnSDxMaL", // ElevenLabs voice ID
+        voiceId: "EXAVITQu4vr4xnSDxMaL",
         traits: ["food-obsessed", "loyal", "actor", "ladies-man"],
         catchphrases: [
             "How you doin'?",

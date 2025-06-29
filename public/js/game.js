@@ -1,9 +1,11 @@
 const socket = io();
 
-// Voice recognition setup
-let recognition;
+// Game state
+let selectedCharacter = null;
 let isRecording = false;
+let recognition = null;
 
+// Initialize speech recognition
 if ("webkitSpeechRecognition" in window) {
     recognition = new webkitSpeechRecognition();
     recognition.continuous = false;
@@ -14,11 +16,46 @@ if ("webkitSpeechRecognition" in window) {
         const transcript = event.results[0][0].transcript;
         handleVoiceInput(transcript);
     };
+
+    recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        stopRecording();
+    };
 }
 
 // DOM elements
 const micButton = document.getElementById("mic-button");
+const voteButton = document.getElementById("vote-button");
+const accuseButton = document.getElementById("accuse-button");
 const dialogueBox = document.getElementById("current-dialogue");
+const selectedNameSpan = document.getElementById("selected-name");
+
+// Character selection
+document.querySelectorAll(".character-frame").forEach((frame) => {
+    frame.addEventListener("click", () => {
+        selectCharacter(frame.dataset.character, frame);
+    });
+});
+
+function selectCharacter(characterName, frameElement) {
+    // Clear previous selection
+    document.querySelectorAll(".character-frame").forEach((f) => {
+        f.classList.remove("selected");
+    });
+
+    // Set new selection
+    frameElement.classList.add("selected");
+    selectedCharacter = characterName;
+    selectedNameSpan.textContent = characterName;
+
+    // Enable action buttons
+    voteButton.disabled = false;
+    accuseButton.disabled = false;
+
+    updateDialogue(
+        `Selected ${characterName}. You can now vote, accuse, or speak to them.`,
+    );
+}
 
 // Voice input handling
 micButton.addEventListener("mousedown", startRecording);
@@ -27,6 +64,11 @@ micButton.addEventListener("touchstart", startRecording);
 micButton.addEventListener("touchend", stopRecording);
 
 function startRecording() {
+    if (!selectedCharacter) {
+        updateDialogue("Please select a character first!");
+        return;
+    }
+
     if (recognition && !isRecording) {
         isRecording = true;
         micButton.textContent = "🔴 Recording...";
@@ -46,54 +88,92 @@ function stopRecording() {
 }
 
 function handleVoiceInput(transcript) {
-    // For demo, randomly select a character to respond
-    const characters = [
-        "Joey",
-        "Phoebe",
-        "Chandler",
-        "Rachel",
-        "Ross",
-        "Monica",
-    ];
-    const randomCharacter =
-        characters[Math.floor(Math.random() * characters.length)];
+    if (!selectedCharacter) return;
 
-    // Send to server
+    updateDialogue(`You said: "${transcript}"`);
+
     socket.emit("voice-input", {
         transcript: transcript,
-        targetCharacter: randomCharacter,
+        targetCharacter: selectedCharacter,
     });
-
-    // Update dialogue box
-    dialogueBox.textContent = `You said: "${transcript}"`;
 }
+
+// Voting functionality
+voteButton.addEventListener("click", () => {
+    if (!selectedCharacter) {
+        updateDialogue("Please select a character to vote for!");
+        return;
+    }
+
+    const confirmation = confirm(
+        `Are you sure you want to vote for ${selectedCharacter}?`,
+    );
+    if (confirmation) {
+        socket.emit("vote", {
+            playerId: window.playerData.id,
+            targetCharacter: selectedCharacter,
+        });
+
+        updateDialogue(`You voted for ${selectedCharacter}!`);
+        voteButton.disabled = true;
+        voteButton.textContent = "✅ Voted";
+    }
+});
+
+// Accusation functionality
+accuseButton.addEventListener("click", () => {
+    if (!selectedCharacter) {
+        updateDialogue("Please select a character to accuse!");
+        return;
+    }
+
+    const confirmation = confirm(
+        `Are you sure you want to accuse ${selectedCharacter} of being mafia?`,
+    );
+    if (confirmation) {
+        socket.emit("accuse", {
+            playerId: window.playerData.id,
+            targetCharacter: selectedCharacter,
+        });
+
+        updateDialogue(`You accused ${selectedCharacter} of being mafia!`);
+        accuseButton.disabled = true;
+        accuseButton.textContent = "✅ Accused";
+    }
+});
 
 // Socket event handlers
 socket.on("character-speaking", (data) => {
     const { character, dialogue, audio } = data;
 
-    // Highlight speaking character
     highlightSpeaker(character);
+    updateDialogue(`${character}: ${dialogue}`);
 
-    // Update dialogue
-    dialogueBox.textContent = `${character}: ${dialogue}`;
-
-    // Play audio if available
     if (audio) {
         playAudio(audio);
     }
+});
+
+socket.on("vote-cast", (data) => {
+    const { voter, target, response } = data;
+    updateDialogue(`Vote registered: ${target} has been voted for!`);
+});
+
+socket.on("accusation-made", (data) => {
+    const { accuser, target, response } = data;
+    updateDialogue(
+        `Accusation made: ${target} has been accused of being mafia!`,
+    );
 });
 
 socket.on("clear-speaker", () => {
     clearSpeakerHighlight();
 });
 
-// Visual highlighting functions
+// Visual effects
 function highlightSpeaker(characterName) {
-    // Clear previous highlights
     clearSpeakerHighlight();
 
-    // Find and highlight current speaker
     const characterFrame = document.querySelector(
         `[data-character="${characterName}"]`,
     );
@@ -103,10 +183,13 @@ function highlightSpeaker(characterName) {
 }
 
 function clearSpeakerHighlight() {
-    const speakingElements = document.querySelectorAll(".speaking");
-    speakingElements.forEach((element) => {
+    document.querySelectorAll(".speaking").forEach((element) => {
         element.classList.remove("speaking");
     });
+}
+
+function updateDialogue(message) {
+    dialogueBox.textContent = message;
 }
 
 // Audio playback
@@ -121,18 +204,12 @@ function playAudio(base64Audio) {
         const audio = new Audio(audioUrl);
         audio.play();
 
-        // Clean up
         audio.onended = () => URL.revokeObjectURL(audioUrl);
     } catch (error) {
         console.error("Error playing audio:", error);
     }
 }
 
-// Character interaction
-document.querySelectorAll(".character-frame").forEach((frame) => {
-    frame.addEventListener("click", () => {
-        const characterName = frame.dataset.character;
-        // You can add click interactions here
-        console.log(`Clicked on ${characterName}`);
-    });
-});
+// Initialize buttons as disabled
+voteButton.disabled = true;
+accuseButton.disabled = true;

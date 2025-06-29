@@ -3,6 +3,8 @@ const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
 const axios = require("axios");
+const multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
 const friendsCharacters = require("./characters");
@@ -11,17 +13,33 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+// Multer setup for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "public/images/players/");
+    },
+    filename: (req, file, cb) => {
+        const uniqueName = `player_${Date.now()}_${file.originalname}`;
+        cb(null, uniqueName);
+    },
+});
+const upload = multer({ storage: storage });
+
 // Setup
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Game state
 let gameState = {
     players: new Map(),
+    votes: new Map(),
+    accusations: new Map(),
     currentSpeaker: null,
-    gamePhase: "lobby", // lobby, day, night, voting
+    gamePhase: "lobby",
     aiPersonas: [],
+    votingResults: [],
 };
 
 // ElevenLabs API function
@@ -63,19 +81,16 @@ class MCPManager {
         const characterData = friendsCharacters[character];
         const conversation = this.conversations.get(character) || [];
 
-        // Add user input to conversation history
         conversation.push({ role: "user", content: userInput });
 
-        // Generate contextual response based on character traits
         let response = this.selectResponse(
             characterData,
             userInput,
             gameContext,
         );
 
-        // Add AI response to conversation history
         conversation.push({ role: "assistant", content: response });
-        this.conversations.set(character, conversation.slice(-10)); // Keep last 10 exchanges
+        this.conversations.set(character, conversation.slice(-10));
 
         return response;
     }
@@ -83,27 +98,26 @@ class MCPManager {
     selectResponse(characterData, userInput, gameContext) {
         const { traits, catchphrases } = characterData;
 
-        // Simple response logic (in hackathon, you'd use a more sophisticated LLM)
-        if (
-            userInput.toLowerCase().includes("food") &&
-            characterData.traits.includes("food-obsessed")
-        ) {
-            return "Joey doesn't share food! But seriously, what kind of food are we talking about here?";
+        if (userInput.toLowerCase().includes("vote")) {
+            return `${catchphrases[0]} But seriously, voting is important in this game!`;
         }
 
-        if (
-            userInput.toLowerCase().includes("accuse") ||
-            userInput.toLowerCase().includes("suspicious")
-        ) {
+        if (userInput.toLowerCase().includes("accuse")) {
             const responses = [
-                `${traits.includes("sarcastic") ? "Could this BE any more dramatic?" : catchphrases[0]}`,
-                "Hey, I'm just trying to survive here!",
-                "That's a pretty serious accusation...",
+                "Hey, that's a serious accusation!",
+                "Could this BE any more dramatic?",
+                "I'm innocent, I swear!",
             ];
             return responses[Math.floor(Math.random() * responses.length)];
         }
 
-        // Default to catchphrase
+        if (
+            userInput.toLowerCase().includes("food") &&
+            traits.includes("food-obsessed")
+        ) {
+            return "Joey doesn't share food! But what kind of food are we talking about?";
+        }
+
         return catchphrases[Math.floor(Math.random() * catchphrases.length)];
     }
 }
@@ -112,52 +126,125 @@ const mcpManager = new MCPManager();
 
 // Routes
 app.get("/", (req, res) => {
-    // Generate AI personas based on user selection (default 4)
+    res.render("index");
+});
+
+app.post("/start-game", upload.single("playerPhoto"), (req, res) => {
+    const playerName = req.body.playerName;
+    const playerPhoto = req.file ? req.file.filename : "default-player.jpg";
+
+    // Store player info in session (simplified for demo)
+    const playerId = uuidv4();
+    gameState.players.set(playerId, {
+        name: playerName,
+        photo: playerPhoto,
+        role: "player",
+    });
+
+    res.redirect(`/game?playerId=${playerId}`);
+});
+
+app.get("/game", (req, res) => {
+    const playerId = req.query.playerId;
+    const player = gameState.players.get(playerId);
+
+    if (!player) {
+        return res.redirect("/");
+    }
+
+    // Generate AI personas
     const selectedCharacters = Object.keys(friendsCharacters).slice(0, 4);
     const personas = selectedCharacters.map((name) => ({
         name,
         ...friendsCharacters[name],
     }));
 
-    res.render("game", { personas });
+    res.render("game", { personas, player });
 });
 
 // Socket.io connection handling
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    // Handle user voice input
+    // Handle voice input
     socket.on("voice-input", async (data) => {
         const { transcript, targetCharacter } = data;
 
-        // Generate AI response using MCP
         const aiResponse = mcpManager.generateResponse(
             targetCharacter,
             transcript,
             gameState,
         );
 
-        // Generate voice audio
         const audioBuffer = await generateVoice(
             aiResponse,
             friendsCharacters[targetCharacter].voiceId,
         );
 
-        // Highlight speaking character
         gameState.currentSpeaker = targetCharacter;
 
-        // Send response to all clients
         io.emit("character-speaking", {
             character: targetCharacter,
             dialogue: aiResponse,
             audio: audioBuffer ? audioBuffer.toString("base64") : null,
         });
 
-        // Clear speaker after 3 seconds
         setTimeout(() => {
             gameState.currentSpeaker = null;
             io.emit("clear-speaker");
         }, 3000);
+    });
+
+    // Handle voting
+    socket.on("vote", (data) => {
+        const { playerId, targetCharacter } = data;
+
+        // Store vote
+        gameState.votes.set(playerId, targetCharacter);
+
+        // Generate AI response to being voted for
+        const response = mcpManager.generateResponse(
+            targetCharacter,
+            "You've been voted for",
+            gameState,
+        );
+
+        io.emit("vote-cast", {
+            voter: playerId,
+            target: targetCharacter,
+            response: response,
+        });
+
+        io.emit("character-speaking", {
+            character: targetCharacter,
+            dialogue: response,
+            audio: null,
+        });
+    });
+
+    // Handle accusations
+    socket.on("accuse", (data) => {
+        const { playerId, targetCharacter } = data;
+
+        gameState.accusations.set(playerId, targetCharacter);
+
+        const response = mcpManager.generateResponse(
+            targetCharacter,
+            "You've been accused of being mafia",
+            gameState,
+        );
+
+        io.emit("accusation-made", {
+            accuser: playerId,
+            target: targetCharacter,
+            response: response,
+        });
+
+        io.emit("character-speaking", {
+            character: targetCharacter,
+            dialogue: response,
+            audio: null,
+        });
     });
 
     socket.on("disconnect", () => {
