@@ -14,10 +14,13 @@ body {
 
 /* Portrait Gallery Styling - Like your image */
 .portrait-gallery {
-  flex: 1;
-  background: linear-gradient(to bottom, #1a1a2e, #16213e);
-  position: relative;
-  overflow: hidden;
+    /* Replace 'hallway.jpg' with your actual image file */
+    background-image: url('/images/joey_flat.jpg');
+    background-size: cover;
+    background-position: center;
+    width: 100vw;
+    height: 100vh;
+    position: relative;
 }
 
 .gallery-background {
